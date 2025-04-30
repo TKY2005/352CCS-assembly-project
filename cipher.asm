@@ -6,7 +6,7 @@ data segment
 
 	invalid_prompt_msg db "Wrong cipher algorithm entered : $"
 	cipher_prompt db "Enter a text to cipher (32 character max) : $"
-	alogrithm_prompt db "Enter the cipher alogritm used (c for ceaser cipher, f for bit flipping algorithm : $"
+	alogrithm_prompt db "Enter the cipher alogritm used (c for ceaser cipher, f for bit flipping algorithm, x for xor cipher) : $"
 	key_prompt db "Enter the cipher key : $"
 	newline db 10, 13, "$"
 	msg db "Ciphered text : $"
@@ -56,6 +56,9 @@ code segment
 		cmp	byte ptr [di], 'f'
 		je	bit_flipping
 
+		cmp	byte ptr [di], 'x'
+		je	xor_cipher
+
 		jne	invalid_prompt
 
 		ceaser_cipher:
@@ -77,6 +80,16 @@ code segment
 			int	21h
 			inc	si
 			loop	bit_flipping
+			jmp	exit
+
+
+		xor_cipher:
+			mov	dl, [si]
+			xor	dl, 75 ; hardcoded key, TODO : add a prompt to ask the user for a key
+			mov	ah, 02h
+			int	21h
+			inc	si
+			loop	xor_cipher
 			jmp	exit
 
 		invalid_prompt:

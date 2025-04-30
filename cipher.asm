@@ -4,10 +4,12 @@ data segment
 		db 0 ; second byte is the number of characters entered (will be updated after executing input interrupt)
 		db 32 dup(?) ; the rest of the buffer will be our actual user input
 
+	; all the prompts and messages used through the program
 	invalid_prompt_msg db "Wrong cipher algorithm entered : $"
 	cipher_prompt db "Enter a text to cipher (32 character max) : $"
-	alogrithm_prompt db "Enter the cipher alogritm used (c for ceaser cipher, f for bit flipping algorithm, x for xor cipher) : $"
-	key_prompt db "Enter the cipher key : $"
+	key_prompt db "Enter a two digit cipher key (01 : 99) : $"
+	all_cipher_algorithms db "c : ceaser cipher", 10, 13, "f : bit-flip cipher", 10, 13, "X : XOR cipher", 10, 13, "$"
+	alogrithm_prompt db "Enter the cipher alogritm used : $"
 	newline db 10, 13, "$"
 	msg db "Ciphered text : $"
 
@@ -25,13 +27,15 @@ code segment
 		mov	ax, data
 		mov	ds, ax
 
+
+		print_msg	all_cipher_algorithms
 		print_msg	alogrithm_prompt
 		mov	ah, 01h ; read the argument for the algoritm selection (one character only)
 		int	21h
 
 		mov	di, 0200h ; move the character input to memory location 200 for temporary storage
 		mov	[di], al
-		int	03h ; in case we need to debug.
+		;int	03h ; in case we need to debug.
 
 		print_msg	newline
 		print_msg	cipher_prompt
@@ -41,6 +45,36 @@ code segment
 		int	21h
 
 		print_msg	newline
+
+
+		
+			; hardcoded two digit input for cipher key.
+			print_msg	key_prompt
+
+			; first digit
+			mov ah, 01h
+      			int 21h
+      			sub al, '0' ; convert from ascii to numeric value
+      			mov bl, al ; store in bl
+  
+      			mov al, bl
+      			mov ah, 0
+      			mov cl, 10
+      			mul cl
+  
+      			mov dl, al
+  
+			; second digit
+      			mov ah, 01h
+      			int 21h
+      			sub al, '0'
+  
+  	    		add dl, al
+      			mov bl, dl
+			int	03h
+			print_msg	newline
+			
+
 
 		mov	al, [txtBuffer + 1] ; load the second byte (the length of the input) to al
 		xor	ah, ah ; clear the high byte of ax to prevent any incorrect readings
@@ -56,17 +90,15 @@ code segment
 		cmp	byte ptr [di], 'f'
 		je	bit_flipping
 
-		cmp	byte ptr [di], 'x'
+		cmp	byte ptr [di], 'X'
 		je	xor_cipher
 
 		jne	invalid_prompt
 
+
 		ceaser_cipher:
-
-			; TODO : Enter the code for prompting the user and setting the key value ;
-
 			mov	dl, [si] ; load current character to dl
-			add	dl, 5 ; do the ceaser cipher (add a value (key) to our ascii character to produce a new character)
+			add	dl, bl ; do the ceaser cipher (add a value (key) to our ascii character to produce a new character)
 			mov	ah, 02h ; DOS interrupt code for displaying character
 			int	21h
 			inc	si
@@ -75,7 +107,7 @@ code segment
 
 		bit_flipping:
 			mov	dl, [si]
-			not	dl
+			not	dl ; no need for a cipher key here.
 			mov	ah, 02h
 			int	21h
 			inc	si
@@ -85,7 +117,7 @@ code segment
 
 		xor_cipher:
 			mov	dl, [si]
-			xor	dl, 75 ; hardcoded key, TODO : add a prompt to ask the user for a key
+			xor	dl, bl ; repeatedly run bitwise XOR with our cipher key
 			mov	ah, 02h
 			int	21h
 			inc	si
